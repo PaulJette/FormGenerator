@@ -1,0 +1,32 @@
+﻿@using MudBlazor
+
+<MudPaper Class="@($"mt-4 pa-4 {Class}")">
+    <MudText Typo="Typo.h6">@Title</MudText>
+    <MudTextField @bind-Value="Data"
+                  ReadOnly="true"
+                  Lines="Lines"
+                  Variant="Variant.Outlined"
+                  FullWidth="true" />
+</MudPaper>
+
+@code {
+    /// <summary>
+    /// Display title
+    /// </summary>
+    [Parameter] public string Title { get; set; } = "Form Data (JSON):";
+
+    /// <summary>
+    /// Data to display (JSON)
+    /// </summary>
+    [Parameter] public string Data { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Number of lines to show
+    /// </summary>
+    [Parameter] public int Lines { get; set; } = 10;
+
+    /// <summary>
+    /// CSS classes to add
+    /// </summary>
+    [Parameter] public string Class { get; set; } = string.Empty;
+}

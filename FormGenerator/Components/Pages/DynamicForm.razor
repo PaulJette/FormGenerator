@@ -1,18 +1,21 @@
-﻿@using System.ComponentModel.DataAnnotations
+﻿@page "/"
+@using System.ComponentModel.DataAnnotations
 @using Microsoft.AspNetCore.Components
 @using Microsoft.AspNetCore.Components.Forms
-@using FormGenerator.Services.Interfaces
-@using System.Text.Json
 @using FormGenerator.Models
+@using FormGenerator.Services.Interfaces
+@using FormGenerator.Components
+@using FormGenerator.Components.Form
+@using FormGenerator.Components.CustomValidation
 @using MudBlazor
 
-@inject IFormGenerationService FormGenerationService
-@inject IJsonLoaderService JsonLoaderService
-
-@page "/"
+@inject IFormStateService FormState
+@inject IFormValidationService Validator
+@inject IFormDataProcessingService DataProcessor
+@inject IDialogService DialogService
 
 <MudContainer>
-    <MudText Typo="Typo.h4" Class="my-4">@formModel.Title</MudText>
+    <MudText Typo="Typo.h4" Class="my-4">@FormState.CurrentForm.Title</MudText>
 
     @if (isLoading)
     {
@@ -20,83 +23,24 @@
     }
     else if (hasError)
     {
-        <MudAlert Severity="Severity.Error" Title="@("Form Configuration Error")" Class="my-4">
-            <MudText>There was a problem loading the form configuration.</MudText>
-
-            <MudExpansionPanels>
-                <MudExpansionPanel Text="Show Details">
-                    <MudText Typo="Typo.body2">@errorMessage</MudText>
-                </MudExpansionPanel>
-            </MudExpansionPanels>
-
-            <div Class="mt-3">
-                <MudButton Color="Color.Primary" Variant="Variant.Filled" OnClick="ReloadForm">Retry</MudButton>
-            </div>
-        </MudAlert>
+        <ErrorHandling Title="Form Configuration Error"
+                       Message="There was a problem loading the form configuration."
+                       DetailedError="@errorMessage"
+                       AlertType="error"
+                       OnRetry="ReloadForm" />
     }
     else
     {
-        <EditForm Model="@formModel" OnValidSubmit="HandleValidSubmit" FormName="dynamicForm">
+        <EditForm EditContext="@FormState.EditContext" OnSubmit="HandleSubmit" FormName="dynamicForm">
             <DataAnnotationsValidator />
+            <FormValidator @ref="formValidator" />
+
             <MudCard>
                 <MudCardContent>
                     <MudGrid>
-                        <!-- Dynamically Generated Text/Email/Number Input Fields -->
-                        @foreach (var field in formModel.InputFields)
-                        {
-                            <MudItem xs="12" sm="6">
-                                @if (field.InputType == "number")
-                                {
-                                    <MudNumericField T="int?"
-                                                     Label="@field.Label"
-                                                     Required="@field.IsRequired"
-                                                     Min="@field.Min"
-                                                     Max="@field.Max"
-                                                     @bind-Value="@numericValues[field.Id]"
-                                                     OnBlur="@(() => UpdateNumericFieldValue(field))" />
-                                }
-                                else if (field.InputType == "email")
-                                {
-                                    <MudTextField @bind-Value="field.Value"
-                                                  Label="@field.Label"
-                                                  Required="@field.IsRequired"
-                                                  InputType="InputType.Email"
-                                                  Validation="@GetEmailValidator(field)" />
-                                }
-                                else
-                                {
-                                    <MudTextField @bind-Value="field.Value"
-                                                  Label="@field.Label"
-                                                  Required="@field.IsRequired" />
-                                }
-                            </MudItem>
-                        }
-
-                        <!-- Dynamically Generated Dropdown Fields -->
-                        @foreach (var dropdown in formModel.DropdownFields)
-                        {
-                            <MudItem xs="12" sm="6">
-                                <MudSelect T="string"
-                                           Label="@dropdown.Label"
-                                           Required="@dropdown.IsRequired"
-                                           @bind-Value="dropdown.SelectedValue">
-                                    @foreach (var option in dropdown.Options)
-                                    {
-                                        <MudSelectItem Value="@option">@option</MudSelectItem>
-                                    }
-                                </MudSelect>
-                            </MudItem>
-                        }
-
-                        <!-- Dynamically Generated Checkbox Fields -->
-                        @foreach (var checkbox in formModel.CheckboxFields)
-                        {
-                            <MudItem xs="12">
-                                <MudCheckBox @bind-Value="checkbox.IsChecked"
-                                             Label="@checkbox.Label"
-                                             Color="Color.Primary" />
-                            </MudItem>
-                        }
+                        <InputFieldsSection InputFields="@FormState.CurrentForm.InputFields" />
+                        <DropdownFieldsSection DropdownFields="@FormState.CurrentForm.DropdownFields" />
+                        <CheckboxFieldsSection CheckboxFields="@FormState.CurrentForm.CheckboxFields" />
                     </MudGrid>
                 </MudCardContent>
                 <MudCardActions>
@@ -105,253 +49,87 @@
                 </MudCardActions>
             </MudCard>
         </EditForm>
-
-        @if (showFormData)
-        {
-            <MudPaper Class="mt-4 pa-4">
-                <MudText Typo="Typo.h6">Form Data (JSON):</MudText>
-                <MudTextField @bind-Value="formDataJson"
-                              ReadOnly="true"
-                              Lines="10"
-                              Variant="Variant.Outlined"
-                              FullWidth="true" />
-            </MudPaper>
-        }
     }
 </MudContainer>
 
 @code {
-    private FormModel formModel = new FormModel();
+    /// <summary>
+    /// Path to JSON form definition
+    /// </summary>
+    private const string JsonFilePath = "formConfig.json";
+
+    private FormValidator formValidator;
     private bool isLoading = true;
     private bool hasError = false;
     private string errorMessage = string.Empty;
-    private bool showFormData = false;
-    private string formDataJson = string.Empty;
-    private Dictionary<string, int?> numericValues = new Dictionary<string, int?>();
 
-    // Path to the JSON file in wwwroot
-    private const string JsonFilePath = "formConfig.json";
-
-    private FormModel originalFormModel = new FormModel();
-
+    /// <summary>
+    /// Load form when component initializes
+    /// </summary>
     protected override async Task OnInitializedAsync()
     {
         try
         {
-            // Load JSON from the wwwroot folder
-            string jsonContent = await JsonLoaderService.LoadJsonFromWwwrootAsync(JsonFilePath);
-
-            // Generate form model from the loaded JSON
-            formModel = await FormGenerationService.GenerateFormFromJsonAsync(jsonContent);
-
-            // Create a deep copy for reset functionality
-            originalFormModel = CloneFormModel(formModel);
-
-            // Initialize numeric fields dictionary
-            foreach (var field in formModel.InputFields)
-            {
-                if (field.InputType == "number")
-                {
-                    if (int.TryParse(field.Value, out int val))
-                    {
-                        numericValues[field.Id] = val;
-                    }
-                    else
-                    {
-                        numericValues[field.Id] = null;
-                    }
-                }
-            }
+            await FormState.InitializeFormAsync(JsonFilePath);
+            isLoading = false;
         }
         catch (Exception ex)
         {
+            isLoading = false;
             hasError = true;
             errorMessage = ex.ToString();
-            Console.Error.WriteLine($"Error loading form configuration: {ex.Message}");
-            // Initialize with empty model in case of error
-            formModel = new FormModel { Title = "Error Loading Form" };
-        }
-        finally
-        {
-            isLoading = false;
-        }
-    }
-
-    private void ResetForm()
-    {
-        // Reset form to original values by creating a deep copy of the original model
-        // This is necessary because C# passes objects by reference, and we need to ensure
-        // the original model hasn't been modified by user interactions
-        formModel = CloneFormModel(originalFormModel);
-
-        // The numericValues dictionary is a separate state used by MudNumericField components,
-        // so we need to reset it separately to ensure consistency between the form model
-        // and what's displayed in the UI
-        numericValues.Clear();
-        foreach (var field in formModel.InputFields)
-        {
-            if (field.InputType == "number")
-            {
-                if (int.TryParse(field.Value, out int val))
-                {
-                    numericValues[field.Id] = val;
-                }
-                else
-                {
-                    numericValues[field.Id] = null;
-                }
-            }
-        }
-
-        // Hide form data section if it was visible
-        showFormData = false;
-    }
-
-    private FormModel CloneFormModel(FormModel source)
-    {
-        var clone = new FormModel
-            {
-                Title = source.Title,
-                InputFields = new List<InputField>(),
-                DropdownFields = new List<DropdownField>(),
-                CheckboxFields = new List<CheckboxField>()
-            };
-
-        foreach (var field in source.InputFields)
-        {
-            clone.InputFields.Add(new InputField
-                {
-                    Id = field.Id,
-                    Label = field.Label,
-                    InputType = field.InputType,
-                    IsRequired = field.IsRequired,
-                    Min = field.Min,
-                    Max = field.Max,
-                    Value = field.Value
-                });
-        }
-
-        foreach (var field in source.DropdownFields)
-        {
-            clone.DropdownFields.Add(new DropdownField
-                {
-                    Id = field.Id,
-                    Label = field.Label,
-                    IsRequired = field.IsRequired,
-                    SelectedValue = field.SelectedValue,
-                    Options = new List<string>(field.Options)
-                });
-        }
-
-        foreach (var field in source.CheckboxFields)
-        {
-            clone.CheckboxFields.Add(new CheckboxField
-                {
-                    Id = field.Id,
-                    Label = field.Label,
-                    IsRequired = field.IsRequired,
-                    IsChecked = field.IsChecked
-                });
-        }
-
-        return clone;
-    }
-
-    private void UpdateNumericFieldValue(InputField field)
-    {
-        if (numericValues.TryGetValue(field.Id, out int? value))
-        {
-            field.Value = value?.ToString() ?? string.Empty;
         }
     }
 
     /// <summary>
-    /// Creates a field-specific email validation function.
+    /// Reset form to initial state
     /// </summary>
-    /// <param name="field">The input field to validate</param>
-    /// <returns>A function that takes a string value and returns an error message (or null if valid)</returns>
-    private Func<string, string> GetEmailValidator(InputField field)
+    private void ResetForm()
     {
-        // This returns a lambda function that captures the specific field
-        // The returned function follows the signature expected by MudBlazor's validation system (string -> string)
-        return value => ValidateEmail(field, value);
+        FormState.ResetForm();
     }
 
-    private string ValidateEmail(InputField field, string value)
+    /// <summary>
+    /// Handle form submission
+    /// </summary>
+    private void HandleSubmit()
     {
-        if (field.IsRequired && string.IsNullOrWhiteSpace(value))
+        FormState.IsFormSubmitted = true;
+        StateHasChanged(); // Force UI update for validation
+
+        if (Validator.ValidateForm(FormState.CurrentForm, FormState.EditContext))
         {
-            return $"{field.Label} is required.";
-        }
+            string formDataJson = DataProcessor.ProcessFormData(
+                FormState.CurrentForm,
+                FormState.NumericValues);
 
-        if (!string.IsNullOrWhiteSpace(value) && !IsValidEmail(value))
-        {
-            return "Please enter a valid email address.";
-        }
-
-        return null;
-    }
-
-    private void HandleValidSubmit()
-    {
-        // Process the form data and generate JSON
-        var formData = new Dictionary<string, object>();
-
-        foreach (var field in formModel.InputFields)
-        {
-            if (field.InputType == "number" && !string.IsNullOrEmpty(field.Value) && int.TryParse(field.Value, out int numValue))
+            // Show dialog with form data instead of adding it to the page
+            var parameters = new DialogParameters
             {
-                // Convert number values to actual numbers in JSON
-                formData[field.Label] = numValue;
-            }
-            else
-            {
-                formData[field.Label] = field.Value;
-            }
-        }
-
-        foreach (var dropdown in formModel.DropdownFields)
-        {
-            formData[dropdown.Label] = dropdown.SelectedValue;
-        }
-
-        foreach (var checkbox in formModel.CheckboxFields)
-        {
-            formData[checkbox.Label] = checkbox.IsChecked;
-        }
-
-        // Format JSON with indentation
-        var options = new JsonSerializerOptions
-            {
-                WriteIndented = true
+                { "FormData", formDataJson },
+                { "Title", "" }
             };
 
-        formDataJson = JsonSerializer.Serialize(formData, options);
-        showFormData = true;
-    }
-
-    private bool IsValidEmail(string email)
-    {
-        try
-        {
-            var addr = new System.Net.Mail.MailAddress(email);
-            return addr.Address == email;
-        }
-        catch
-        {
-            return false;
+            DialogService.ShowAsync<FormSubmissionDialog>("Form Submission Result", parameters,
+                new DialogOptions
+                    {
+                        MaxWidth = MaxWidth.Medium,
+                        FullWidth = true,
+                        CloseButton = true
+                    });
         }
     }
 
+    /// <summary>
+    /// Reload the form
+    /// </summary>
     private async Task ReloadForm()
     {
         isLoading = true;
         hasError = false;
         errorMessage = string.Empty;
-        showFormData = false;
+        FormState.IsFormSubmitted = false;
 
         await OnInitializedAsync();
     }
-
-
 }

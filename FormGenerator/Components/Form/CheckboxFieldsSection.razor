@@ -1,0 +1,28 @@
+﻿@using FormGenerator.Models
+@using FormGenerator.Services.Interfaces
+@using Microsoft.AspNetCore.Components.Forms
+@using MudBlazor
+
+@inject IFormStateService FormState
+@inject IFormValidationService Validator
+
+@foreach (var checkbox in CheckboxFields)
+{
+    <MudItem xs="12">
+        <MudCheckBox @bind-Value="checkbox.IsChecked"
+                     Label="@checkbox.Label"
+                     Color="Color.Primary" />
+
+        @if (checkbox.IsRequired && FormState.IsFormSubmitted && !checkbox.IsChecked)
+        {
+            <div class="mud-input-helper-text mud-input-error">@checkbox.Label is required</div>
+        }
+    </MudItem>
+}
+
+@code {
+    /// <summary>
+    /// Checkbox fields to display
+    /// </summary>
+    [Parameter] public List<CheckboxField> CheckboxFields { get; set; } = new List<CheckboxField>();
+}

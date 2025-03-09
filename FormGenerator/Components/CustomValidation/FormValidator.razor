@@ -1,0 +1,130 @@
+﻿@using Microsoft.AspNetCore.Components.Forms
+@using FormGenerator.Models
+@implements IDisposable
+
+@code {
+    [CascadingParameter]
+    private EditContext CurrentEditContext { get; set; }
+
+    private ValidationMessageStore messageStore;
+
+    protected override void OnInitialized()
+    {
+        if (CurrentEditContext == null)
+        {
+            throw new InvalidOperationException(
+                $"{nameof(FormValidator)} requires a cascading parameter of type {nameof(EditContext)}.");
+        }
+
+        messageStore = new ValidationMessageStore(CurrentEditContext);
+
+        // Subscribe to validation events
+        CurrentEditContext.OnValidationRequested += OnValidationRequested;
+        CurrentEditContext.OnFieldChanged += OnFieldChanged;
+    }
+
+    // When the form requests validation
+    private void OnValidationRequested(object sender, ValidationRequestedEventArgs args)
+    {
+        messageStore.Clear();
+        ValidateModel((FormModel)CurrentEditContext.Model);
+    }
+
+    // When a field changes
+    private void OnFieldChanged(object sender, FieldChangedEventArgs args)
+    {
+        // Clear validation for the field that changed
+        messageStore.Clear(args.FieldIdentifier);
+
+        // Revalidate the specific field
+        ValidateField(args.FieldIdentifier);
+    }
+
+    private void ValidateModel(FormModel model)
+    {
+        // Validate all dropdown fields
+        foreach (var dropdown in model.DropdownFields)
+        {
+            if (dropdown.IsRequired && string.IsNullOrWhiteSpace(dropdown.SelectedValue))
+            {
+                var fieldIdentifier = FieldIdentifier.Create(() => dropdown.SelectedValue);
+                messageStore.Add(fieldIdentifier, $"{dropdown.Label} is required");
+            }
+        }
+
+        // Validate all checkbox fields
+        foreach (var checkbox in model.CheckboxFields)
+        {
+            if (checkbox.IsRequired && !checkbox.IsChecked)
+            {
+                var fieldIdentifier = FieldIdentifier.Create(() => checkbox.IsChecked);
+                messageStore.Add(fieldIdentifier, $"{checkbox.Label} must be checked");
+            }
+        }
+
+        // Validate all input fields (just an example, primary validation via attributes)
+        foreach (var field in model.InputFields)
+        {
+            if (field.IsRequired && string.IsNullOrWhiteSpace(field.Value))
+            {
+                var fieldIdentifier = FieldIdentifier.Create(() => field.Value);
+                messageStore.Add(fieldIdentifier, $"{field.Label} is required");
+            }
+        }
+
+        // Notify the edit context that validation has completed
+        CurrentEditContext.NotifyValidationStateChanged();
+    }
+
+    private void ValidateField(FieldIdentifier fieldIdentifier)
+    {
+        var model = (FormModel)CurrentEditContext.Model;
+
+        // Check if the field is a dropdown's SelectedValue
+        var dropdown = model.DropdownFields.FirstOrDefault(d =>
+            fieldIdentifier.FieldName == nameof(DropdownField.SelectedValue) &&
+            fieldIdentifier.Model == d);
+
+        if (dropdown != null && dropdown.IsRequired && string.IsNullOrWhiteSpace(dropdown.SelectedValue))
+        {
+            messageStore.Add(fieldIdentifier, $"{dropdown.Label} is required");
+        }
+
+        // Check if the field is a checkbox's IsChecked
+        var checkbox = model.CheckboxFields.FirstOrDefault(c =>
+            fieldIdentifier.FieldName == nameof(CheckboxField.IsChecked) &&
+            fieldIdentifier.Model == c);
+
+        if (checkbox != null && checkbox.IsRequired && !checkbox.IsChecked)
+        {
+            messageStore.Add(fieldIdentifier, $"{checkbox.Label} must be checked");
+        }
+
+        // Notify validation state changed
+        CurrentEditContext.NotifyValidationStateChanged();
+    }
+
+    public void DisplayErrors(Dictionary<string, List<string>> errors)
+    {
+        if (CurrentEditContext != null)
+        {
+            // You could add additional custom validation messages here if needed
+            CurrentEditContext.NotifyValidationStateChanged();
+        }
+    }
+
+    public void ClearErrors()
+    {
+        messageStore?.Clear();
+        CurrentEditContext?.NotifyValidationStateChanged();
+    }
+
+    public void Dispose()
+    {
+        if (CurrentEditContext != null)
+        {
+            CurrentEditContext.OnValidationRequested -= OnValidationRequested;
+            CurrentEditContext.OnFieldChanged -= OnFieldChanged;
+        }
+    }
+}

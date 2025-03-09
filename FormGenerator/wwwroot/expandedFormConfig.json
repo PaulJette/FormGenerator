@@ -1,0 +1,81 @@
+{
+  "title": "Sample Form",
+  "fields": [
+    {
+      "type": "text",
+      "label": "Name",
+      "required": true
+    },
+    {
+      "type": "text",
+      "label": "Address",
+      "required": false
+    },
+    {
+      "type": "text",
+      "label": "Company",
+      "required": false
+    },
+    {
+      "type": "email",
+      "label": "Email",
+      "required": true
+    },
+    {
+      "type": "email",
+      "label": "Alternate Email",
+      "required": false
+    },
+    {
+      "type": "number",
+      "label": "Age",
+      "min": 18,
+      "max": 100
+    },
+    {
+      "type": "number",
+      "label": "Years of Experience",
+      "min": 0,
+      "max": 50
+    },
+    {
+      "type": "number",
+      "label": "Salary Expectation",
+      "min": 30000,
+      "max": 200000
+    },
+    {
+      "type": "dropdown",
+      "label": "Industry",
+      "values": [ "Tech", "Production", "Health" ],
+      "required": true
+    },
+    {
+      "type": "dropdown",
+      "label": "Department",
+      "values": [ "Engineering", "Marketing", "Sales", "HR", "Operations" ],
+      "required": false
+    },
+    {
+      "type": "dropdown",
+      "label": "Experience Level",
+      "values": [ "Entry", "Junior", "Mid-level", "Senior", "Lead" ],
+      "required": true
+    },
+    {
+      "type": "checkbox",
+      "label": "Subscribe to Newsletter",
+      "required": false
+    },
+    {
+      "type": "checkbox",
+      "label": "Agree to Terms of Service",
+      "required": true
+    },
+    {
+      "type": "checkbox",
+      "label": "Available for Weekend Work",
+      "required": false
+    }
+  ]
+}

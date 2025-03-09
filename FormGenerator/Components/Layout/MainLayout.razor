@@ -13,10 +13,7 @@
         <MudText Typo="Typo.h5" Class="ml-3">Dynamic Form Generator</MudText>
         <MudSpacer />
         <MudTooltip Text="About">
-            <MudIconButton Icon="@Icons.Material.Filled.Info"
-                           Color="Color.Inherit"
-                           Edge="Edge.End"
-                           OnClick="OpenAboutDialog" />
+            <MudIconButton Icon="@Icons.Material.Filled.Info" Color="Color.Inherit" Edge="Edge.End" OnClick="OpenAboutDialog" />
         </MudTooltip>
     </MudAppBar>
     <MudMainContent>
@@ -35,6 +32,6 @@
                 MaxWidth = MaxWidth.Small
             };
 
-        DialogService.ShowAsync<AboutDialog>(string.Empty, options);
+        DialogService.Show<AboutDialog>(string.Empty, options);
     }
 }

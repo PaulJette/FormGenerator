@@ -1,0 +1,38 @@
+﻿@using FormGenerator.Models
+@using FormGenerator.Services.Interfaces
+@using Microsoft.AspNetCore.Components.Forms
+@using MudBlazor
+
+@inject IFormStateService FormState
+@inject IFormValidationService Validator
+
+@foreach (var dropdown in DropdownFields)
+{
+    <MudItem xs="12" sm="6">
+        <div class="d-flex flex-column">
+            <MudSelect T="string"
+                       Label="@dropdown.Label"
+                       Required="@dropdown.IsRequired"
+                       @bind-Value="dropdown.SelectedValue"
+                       AdornmentColor="@(Validator.HasDropdownError(dropdown, FormState.IsFormSubmitted) ? Color.Error : Color.Default)"
+                       Class="@(Validator.HasDropdownError(dropdown, FormState.IsFormSubmitted) ? "mud-input-error" : "")">
+                @foreach (var option in dropdown.Options)
+                {
+                    <MudSelectItem Value="@option">@option</MudSelectItem>
+                }
+            </MudSelect>
+
+            @if (Validator.HasDropdownError(dropdown, FormState.IsFormSubmitted))
+            {
+                <div class="mud-input-helper-text mud-input-error">@dropdown.Label is required</div>
+            }
+        </div>
+    </MudItem>
+}
+
+@code {
+    /// <summary>
+    /// Dropdown fields to display
+    /// </summary>
+    [Parameter] public List<DropdownField> DropdownFields { get; set; } = new List<DropdownField>();
+}

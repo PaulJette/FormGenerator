@@ -6,6 +6,7 @@
       "label": "Name",
       "required": true
     },
+
     {
       "type": "email",
       "label": "Email",

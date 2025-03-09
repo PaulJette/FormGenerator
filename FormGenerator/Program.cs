@@ -19,5 +19,9 @@ builder.Services.AddMudServices();
 // Register our services with interfaces
 builder.Services.AddScoped<IFormGenerationService, FormGenerationService>();
 builder.Services.AddScoped<IJsonLoaderService, JsonLoaderService>();
+builder.Services.AddScoped<IFormStateService, FormStateService>();
+builder.Services.AddScoped<IFormValidationService, FormValidationService>();
+builder.Services.AddScoped<IFormDataProcessingService, FormDataProcessingService>();
+builder.Services.AddLogging();
 
 await builder.Build().RunAsync();
