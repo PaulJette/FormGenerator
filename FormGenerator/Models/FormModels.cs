@@ -1,22 +1,25 @@
-﻿namespace FormGenerator.Models;
+﻿using System.ComponentModel.DataAnnotations;
 
-using System.Collections.Generic;
-using System.ComponentModel.DataAnnotations;
+namespace FormGenerator.Models;
 
 public class FormModel
 {
-    public string StaticField { get; set; } = string.Empty;
-    public List<TextField> InputFields { get; set; } = new();
+    public string Title { get; set; } = string.Empty;
+    public List<InputField> InputFields { get; set; } = new();
     public List<DropdownField> DropdownFields { get; set; } = new();
+    public List<CheckboxField> CheckboxFields { get; set; } = new();
 }
 
-public class TextField
+public class InputField
 {
     public string Id { get; set; }
     public string Label { get; set; }
     public bool IsRequired { get; set; }
+    public string InputType { get; set; } = "text"; // text, email, number, etc.
+    public int? Min { get; set; }
+    public int? Max { get; set; }
 
-    [CustomValidation]
+    [CustomInputValidation]
     public string Value { get; set; } = string.Empty;
 }
 
@@ -26,33 +29,91 @@ public class DropdownField
     public string Label { get; set; }
     public bool IsRequired { get; set; }
 
-    [CustomValidation]
+    [CustomDropdownValidation]
     public string SelectedValue { get; set; } = string.Empty;
 
     public List<string> Options { get; set; } = new();
 }
 
-// Custom attribute to handle conditional validation, Blazor's built in validation components don't automatically bind to dynamic components.
-public class CustomValidationAttribute : ValidationAttribute
+public class CheckboxField
+{
+    public string Id { get; set; }
+    public string Label { get; set; }
+    public bool IsRequired { get; set; }
+
+    [CustomCheckboxValidation]
+    public bool IsChecked { get; set; }
+}
+
+// Custom validation attributes
+public class CustomInputValidationAttribute : ValidationAttribute
 {
     protected override ValidationResult IsValid(object value, ValidationContext validationContext)
     {
-        // For TextField
-        if (validationContext.ObjectInstance is TextField textField)
+        var field = (InputField)validationContext.ObjectInstance;
+
+        if (field.IsRequired && string.IsNullOrWhiteSpace(field.Value))
         {
-            if (textField.IsRequired && string.IsNullOrWhiteSpace(textField.Value))
+            return new ValidationResult($"{field.Label} is required.");
+        }
+
+        if (field.InputType == "number" && !string.IsNullOrWhiteSpace(field.Value))
+        {
+            if (int.TryParse(field.Value, out int numValue))
             {
-                return new ValidationResult("This field is required.");
+                if (field.Min.HasValue && numValue < field.Min.Value)
+                {
+                    return new ValidationResult($"{field.Label} must be at least {field.Min.Value}.");
+                }
+
+                if (field.Max.HasValue && numValue > field.Max.Value)
+                {
+                    return new ValidationResult($"{field.Label} must not exceed {field.Max.Value}.");
+                }
+            }
+            else
+            {
+                return new ValidationResult($"{field.Label} must be a valid number.");
             }
         }
 
-        // For DropdownField
-        else if (validationContext.ObjectInstance is DropdownField dropdownField)
+        if (field.InputType == "email" && !string.IsNullOrWhiteSpace(field.Value))
         {
-            if (dropdownField.IsRequired && string.IsNullOrWhiteSpace(dropdownField.SelectedValue))
+            var emailAttribute = new EmailAddressAttribute();
+            if (!emailAttribute.IsValid(field.Value))
             {
-                return new ValidationResult("Please select a value.");
+                return new ValidationResult($"{field.Label} must be a valid email address.");
             }
+        }
+
+        return ValidationResult.Success;
+    }
+}
+
+public class CustomDropdownValidationAttribute : ValidationAttribute
+{
+    protected override ValidationResult IsValid(object value, ValidationContext validationContext)
+    {
+        var field = (DropdownField)validationContext.ObjectInstance;
+
+        if (field.IsRequired && string.IsNullOrWhiteSpace(field.SelectedValue))
+        {
+            return new ValidationResult($"Please select a {field.Label.ToLower()}.");
+        }
+
+        return ValidationResult.Success;
+    }
+}
+
+public class CustomCheckboxValidationAttribute : ValidationAttribute
+{
+    protected override ValidationResult IsValid(object value, ValidationContext validationContext)
+    {
+        var field = (CheckboxField)validationContext.ObjectInstance;
+
+        if (field.IsRequired && !field.IsChecked)
+        {
+            return new ValidationResult($"{field.Label} must be checked.");
         }
 
         return ValidationResult.Success;

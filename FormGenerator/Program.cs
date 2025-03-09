@@ -1,5 +1,7 @@
 using FormGenerator.Components;
 using FormGenerator.Services.Implementations;
+using FormGenerator.Services.Interfaces;
+using MudBlazor.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -7,7 +9,12 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddRazorComponents()
     .AddInteractiveServerComponents();
 
-builder.Services.AddScoped<FormService>();
+// Register MudBlazor services
+builder.Services.AddMudServices();
+
+// Register our services with interfaces
+builder.Services.AddScoped<IFormGenerationService, FormGenerationService>();
+builder.Services.AddScoped<IJsonLoaderService, JsonLoaderService>();
 
 var app = builder.Build();
 
