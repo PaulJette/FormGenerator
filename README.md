@@ -2,8 +2,6 @@
 
 A Blazor WebAssembly application that dynamically generates forms based on JSON configuration files. Built with MudBlazor for a clean, responsive Material Design UI.
 
-![Dynamic Form Generator](https://via.placeholder.com/800x400?text=Dynamic+Form+Generator)
-
 ## Features
 
 - **Dynamic form generation** from JSON configuration
