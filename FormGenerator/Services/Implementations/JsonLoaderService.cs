@@ -5,34 +5,33 @@ namespace FormGenerator.Services.Implementations;
 public class JsonLoaderService : IJsonLoaderService
 {
     private readonly ILogger<JsonLoaderService> _logger;
-    private readonly IWebHostEnvironment _webHostEnvironment;
+    private readonly HttpClient _httpClient;
 
-    public JsonLoaderService(ILogger<JsonLoaderService> logger, IWebHostEnvironment webHostEnvironment)
+    public JsonLoaderService(ILogger<JsonLoaderService> logger, HttpClient httpClient)
     {
         _logger = logger;
-        _webHostEnvironment = webHostEnvironment;
+        _httpClient = httpClient;
     }
 
     public async Task<string> LoadJsonFromWwwrootAsync(string fileName)
     {
         try
         {
-            // Construct the full path to the file in wwwroot
-            string filePath = Path.Combine(_webHostEnvironment.WebRootPath, fileName);
+            // In WebAssembly, we access files via HTTP instead of file system
+            var response = await _httpClient.GetAsync(fileName);
 
-            if (!File.Exists(filePath))
+            if (!response.IsSuccessStatusCode)
             {
-                throw new FileNotFoundException($"Configuration file not found: {fileName}", filePath);
+                throw new FileNotFoundException($"Configuration file not found: {fileName}");
             }
 
-            // Read the file content
-            return await File.ReadAllTextAsync(filePath);
+            // Read the content as string
+            return await response.Content.ReadAsStringAsync();
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, $"Error loading JSON from wwwroot file: {fileName}");
+            _logger.LogError(ex, $"Error loading JSON from file: {fileName}");
             throw;
         }
     }
 }
-
