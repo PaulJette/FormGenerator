@@ -34,13 +34,11 @@ A Blazor WebAssembly application that dynamically generates forms based on JSON 
    ```
    dotnet restore
    ```
-   This command should be run in the Windows terminal (Command Prompt, PowerShell, or Windows Terminal) while in the main project directory where the `.csproj` file is located.
 
 4. Build and run the application
    ```
    dotnet run
    ```
-   This command should also be run in the main project directory. It will build the project and start a local development server.
 
 5. Open your web browser and navigate to:
    - https://localhost:5001 (HTTPS)
