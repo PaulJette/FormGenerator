@@ -1,0 +1,84 @@
+﻿
+@using System.ComponentModel.DataAnnotations
+@using Microsoft.AspNetCore.Components
+@using Microsoft.AspNetCore.Components.Forms
+@using FormGenerator.Services
+@using FormGenerator.Models
+@using FormGenerator.Services.Implementations;
+
+@inject FormService FormService
+
+@page "/DynamicForm"
+
+<h3>Dynamic Form</h3>
+
+<EditForm Model="@formModel" OnValidSubmit="HandleValidSubmit" FormName="dynamicForm">
+    <DataAnnotationsValidator />
+    <ValidationSummary />
+
+    <!-- Static Input Field -->
+    <div class="form-group">
+        <label for="StaticField">Static Field</label>
+        <InputText id="StaticField" class="form-control" @bind-Value="formModel.StaticField" />
+        <ValidationMessage For="@(() => formModel.StaticField)" />
+    </div>
+
+    <!-- Dynamically Generated Input Fields -->
+    @for (int i = 0; i < formModel.InputFields.Count; i++)
+    {
+        var index = i;
+        var field = formModel.InputFields[i];
+        <div class="form-group">
+            <label for="@field.Id">@field.Label</label>
+            <InputText id="@field.Id" class="form-control" @bind-Value="formModel.InputFields[index].Value" />
+            <div class="validation-message">
+                @if (string.IsNullOrEmpty(formModel.InputFields[index].Value))
+                {
+                    <span class="field-validation-error">This field is required.</span>
+                }
+            </div>
+        </div>
+    }
+
+    <!-- Dynamically Generated Dropdown Fields -->
+    @for (int i = 0; i < formModel.DropdownFields.Count; i++)
+    {
+        var index = i;
+        var dropdown = formModel.DropdownFields[i];
+        <div class="form-group">
+            <label for="@dropdown.Id">@dropdown.Label</label>
+            <InputSelect id="@dropdown.Id" class="form-control" @bind-Value="formModel.DropdownFields[index].SelectedValue">
+                <option value="">-- Select an option --</option>
+                @foreach (var option in dropdown.Options)
+                {
+                    <option value="@option">@option</option>
+                }
+            </InputSelect>
+            <div class="validation-message">
+                @if (string.IsNullOrEmpty(formModel.DropdownFields[index].SelectedValue))
+                {
+                    <span class="field-validation-error">Please select a value.</span>
+                }
+            </div>
+        </div>
+    }
+
+    <button type="submit" class="btn btn-primary">Submit</button>
+</EditForm>
+
+@code {
+    private FormModel formModel = new FormModel();
+
+    protected override void OnInitialized()
+    {
+        FormService.GenerateForm(formModel);
+    }
+
+    private void HandleValidSubmit()
+    {
+        if (FormService.ValidateForm(formModel))
+        {
+            FormService.ProcessForm(formModel);
+        }
+    }
+}

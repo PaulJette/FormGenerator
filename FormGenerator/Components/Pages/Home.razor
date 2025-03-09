@@ -1,0 +1,215 @@
+﻿@page "/"
+@using System.ComponentModel.DataAnnotations
+@using Microsoft.AspNetCore.Components
+@using Microsoft.AspNetCore.Components.Forms
+
+<h3>Dynamic Form</h3>
+
+<EditForm Model="@model" OnValidSubmit="HandleValidSubmit" FormName="dynamicForm">
+    <DataAnnotationsValidator />
+    <ValidationSummary />
+
+    <!-- Static Input Field -->
+    <div class="form-group">
+        <label for="StaticField">Static Field</label>
+        <InputText id="StaticField" class="form-control" @bind-Value="model.StaticField" />
+        <ValidationMessage For="@(() => model.StaticField)" />
+    </div>
+
+    <!-- Dynamically Generated Input Fields -->
+    @for (int i = 0; i < model.InputFields.Count; i++)
+    {
+        var index = i;
+        var field = model.InputFields[i];
+        <div class="form-group">
+            <label for="@field.Id">@field.Label</label>
+            <InputText id="@field.Id" class="form-control" @bind-Value="model.InputFields[index].Value" />
+            <div class="validation-message">
+                @if (string.IsNullOrEmpty(model.InputFields[index].Value))
+                {
+                    <span class="field-validation-error">This field is required.</span>
+                }
+            </div>
+        </div>
+    }
+
+    <!-- Dynamically Generated Dropdown Fields -->
+    @for (int i = 0; i < model.DropdownFields.Count; i++)
+    {
+        var index = i;
+        var dropdown = model.DropdownFields[i];
+        <div class="form-group">
+            <label for="@dropdown.Id">@dropdown.Label</label>
+            <InputSelect id="@dropdown.Id" class="form-control" @bind-Value="model.DropdownFields[index].SelectedValue">
+                <option value="">-- Select an option --</option>
+                @foreach (var option in dropdown.Options)
+                {
+                    <option value="@option">@option</option>
+                }
+            </InputSelect>
+            <div class="validation-message">
+                @if (string.IsNullOrEmpty(model.DropdownFields[index].SelectedValue))
+                {
+                    <span class="field-validation-error">Please select a value.</span>
+                }
+            </div>
+        </div>
+    }
+
+    <button type="submit" class="btn btn-primary">Submit</button>
+</EditForm>
+
+@code {
+    private FormModel model = new FormModel();
+    private Random random = new Random();
+    private EditContext editContext;
+    private ValidationMessageStore messageStore;
+
+    protected override void OnInitialized()
+    {
+        GenerateTextFields();
+        GenerateDropdowns();
+
+        // Set up custom validation
+        editContext = new EditContext(model);
+        messageStore = new ValidationMessageStore(editContext);
+
+        // Subscribe to validation requested events
+        editContext.OnValidationRequested += (sender, eventArgs) => ValidateModel((EditContext)sender);
+
+        // Initialize validation by forcing a validation request
+        editContext.Validate();
+    }
+
+    private void ValidateModel(EditContext editContext)
+    {
+        messageStore.Clear();
+        bool isValid = true;
+
+        // Validate input fields
+        for (int i = 0; i < model.InputFields.Count; i++)
+        {
+            if (string.IsNullOrWhiteSpace(model.InputFields[i].Value))
+            {
+                var fieldIdentifier = new FieldIdentifier(model.InputFields[i], nameof(TextField.Value));
+                messageStore.Add(fieldIdentifier, "This field is required.");
+                isValid = false;
+            }
+        }
+
+        // Validate dropdown fields
+        for (int i = 0; i < model.DropdownFields.Count; i++)
+        {
+            if (string.IsNullOrWhiteSpace(model.DropdownFields[i].SelectedValue))
+            {
+                var fieldIdentifier = new FieldIdentifier(model.DropdownFields[i], nameof(DropdownField.SelectedValue));
+                messageStore.Add(fieldIdentifier, "Please select a value.");
+                isValid = false;
+            }
+        }
+    }
+
+    private void GenerateTextFields()
+    {
+        int numberOfFields = random.Next(1, 5); // 1-4 input fields
+        model.InputFields = new List<TextField>();
+
+        for (int i = 1; i <= numberOfFields; i++)
+        {
+            model.InputFields.Add(new TextField
+                {
+                    Id = $"Field{i}",
+                    Label = $"Field {i}",
+                    Value = string.Empty
+                });
+        }
+    }
+
+    private void GenerateDropdowns()
+    {
+        int numberOfDropdowns = random.Next(1, 4); // 1-3 dropdowns
+        model.DropdownFields = new List<DropdownField>();
+
+        for (int i = 1; i <= numberOfDropdowns; i++)
+        {
+            model.DropdownFields.Add(new DropdownField
+                {
+                    Id = $"Dropdown{i}",
+                    Label = $"Dropdown {i}",
+                    SelectedValue = string.Empty,
+                    Options = new List<string> { "Option 1", "Option 2", "Option 3" }
+                });
+        }
+    }
+
+    private void HandleValidSubmit()
+    {
+        bool isValid = true;
+
+        // Additional validation check before proceeding
+        foreach (var field in model.InputFields)
+        {
+            if (string.IsNullOrWhiteSpace(field.Value))
+            {
+                isValid = false;
+                break;
+            }
+        }
+
+        foreach (var dropdown in model.DropdownFields)
+        {
+            if (string.IsNullOrWhiteSpace(dropdown.SelectedValue))
+            {
+                isValid = false;
+                break;
+            }
+        }
+
+        if (!isValid)
+        {
+            return; // Stop processing if validation fails
+        }
+
+        Console.WriteLine("Form submitted successfully!");
+        Console.WriteLine($"Static Field: {model.StaticField}");
+
+        foreach (var field in model.InputFields)
+        {
+            Console.WriteLine($"Field: {field.Label}, Value: {field.Value}");
+        }
+
+        foreach (var dropdown in model.DropdownFields)
+        {
+            Console.WriteLine($"Dropdown: {dropdown.Label}, Selected Value: {dropdown.SelectedValue}");
+        }
+    }
+
+    public class FormModel
+    {
+        [Required(ErrorMessage = "Static field is required.")]
+        public string StaticField { get; set; } = string.Empty;
+
+        public List<TextField> InputFields { get; set; } = new();
+        public List<DropdownField> DropdownFields { get; set; } = new();
+    }
+
+    public class TextField
+    {
+        public string Id { get; set; }
+        public string Label { get; set; }
+
+        [Required(ErrorMessage = "This field is required.")]
+        public string Value { get; set; } = string.Empty;
+    }
+
+    public class DropdownField
+    {
+        public string Id { get; set; }
+        public string Label { get; set; }
+
+        [Required(ErrorMessage = "Please select a value.")]
+        public string SelectedValue { get; set; } = string.Empty;
+
+        public List<string> Options { get; set; } = new();
+    }
+}
