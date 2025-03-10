@@ -11,6 +11,7 @@ public class FormStateService : IFormStateService
 {
     private readonly IFormGenerationService _formGenerationService;
     private readonly IJsonLoaderService _jsonLoaderService;
+    private readonly ILogger<FormStateService> _logger;
 
     public FormModel CurrentForm { get; private set; } = new FormModel();
     public FormModel OriginalForm { get; private set; } = new FormModel();
@@ -20,10 +21,12 @@ public class FormStateService : IFormStateService
 
     public FormStateService(
         IFormGenerationService formGenerationService,
-        IJsonLoaderService jsonLoaderService)
+        IJsonLoaderService jsonLoaderService,
+        ILogger<FormStateService> logger)
     {
         _formGenerationService = formGenerationService;
         _jsonLoaderService = jsonLoaderService;
+        _logger = logger;
         EditContext = new EditContext(CurrentForm);
     }
 
@@ -51,6 +54,9 @@ public class FormStateService : IFormStateService
     private void InitializeNumericFields()
     {
         NumericValues.Clear();
+
+        _logger.LogInformation($"Initializing {CurrentForm.InputFields.Count} numeric fields");
+
         foreach (var field in CurrentForm.InputFields)
         {
             if (field.InputType == "number")
@@ -63,6 +69,8 @@ public class FormStateService : IFormStateService
                 {
                     NumericValues[field.Id] = null;
                 }
+
+                _logger.LogDebug($"Initialized numeric field: {field.Label}, ID: {field.Id}, Value: {NumericValues[field.Id]}");
             }
         }
     }
@@ -97,7 +105,7 @@ public class FormStateService : IFormStateService
         {
             clone.InputFields.Add(new InputField
             {
-                Id = field.Id,
+                Id = field.Id,  // Preserve original ID
                 Label = field.Label,
                 InputType = field.InputType,
                 IsRequired = field.IsRequired,
@@ -112,7 +120,7 @@ public class FormStateService : IFormStateService
         {
             clone.DropdownFields.Add(new DropdownField
             {
-                Id = field.Id,
+                Id = field.Id,  // Preserve original ID
                 Label = field.Label,
                 IsRequired = field.IsRequired,
                 SelectedValue = field.SelectedValue,
@@ -125,7 +133,7 @@ public class FormStateService : IFormStateService
         {
             clone.CheckboxFields.Add(new CheckboxField
             {
-                Id = field.Id,
+                Id = field.Id,  // Preserve original ID
                 Label = field.Label,
                 IsRequired = field.IsRequired,
                 IsChecked = field.IsChecked
@@ -137,14 +145,29 @@ public class FormStateService : IFormStateService
 
     public void UpdateNumericFieldValue(InputField field, int? value)
     {
+        if (field == null)
+        {
+            _logger.LogWarning("Attempted to update null field");
+            return;
+        }
+
+        _logger.LogDebug($"Updating numeric field: {field.Label}, ID: {field.Id}, Value: {value}");
+
         // Update the dictionary value
         NumericValues[field.Id] = value;
 
         // Update the string value in the model
         field.Value = value?.ToString() ?? string.Empty;
 
+        // Log the state of NumericValues after update
+        _logger.LogDebug($"NumericValues now contains {NumericValues.Count} entries");
+        foreach (var entry in NumericValues)
+        {
+            _logger.LogDebug($"  ID: {entry.Key}, Value: {entry.Value}");
+        }
+
         // Notify validation system of change
-        var fieldIdentifier = FieldIdentifier.Create(() => field.Value);
+        var fieldIdentifier = new FieldIdentifier(field, nameof(InputField.Value));
         EditContext.NotifyFieldChanged(fieldIdentifier);
     }
 }

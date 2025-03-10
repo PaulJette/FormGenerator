@@ -18,10 +18,10 @@
 </MudDialog>
 
 @code {
-    [CascadingParameter] IMudDialogInstance MudDialog { get; set; } = default!;
+    [CascadingParameter] IMudDialogInstance? MudDialog { get; set; }
 
-    [Parameter] public string FormData { get; set; }
+    [Parameter] public string FormData { get; set; } = string.Empty;
     [Parameter] public string Title { get; set; } = "Form Data";
 
-    private void Close() => MudDialog.Close();
+    private void Close() => MudDialog?.Close();
 }

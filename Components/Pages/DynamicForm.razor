@@ -56,9 +56,11 @@
     /// <summary>
     /// Path to JSON form definition
     /// </summary>
-    private const string JsonFilePath = "formConfig.json";
 
-    private FormValidator formValidator;
+    //private const string JsonFilePath = "formConfig.json";
+    private const string JsonFilePath = "expandedFormConfig.json";
+
+    private FormValidator? formValidator;
     private bool isLoading = true;
     private bool hasError = false;
     private string errorMessage = string.Empty;

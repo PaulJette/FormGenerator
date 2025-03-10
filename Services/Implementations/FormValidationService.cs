@@ -72,8 +72,8 @@ public class FormValidationService : IFormValidationService
             return "Please enter a valid email address.";
         }
 
-        // Valid
-        return null;
+        // Valid - return empty string instead of null
+        return string.Empty;
     }
 
     public bool IsValidEmail(string email)

@@ -5,19 +5,22 @@
 
 @inject IFormStateService FormState
 @inject IFormValidationService Validator
+@inject ILogger<InputFieldsSection> Logger
 
 @foreach (var field in InputFields)
 {
     <MudItem xs="12" sm="6">
         @if (field.InputType == "number")
         {
+            var fieldId = field.Id; // Create local variable to capture the field ID for the lambda
+
             <MudNumericField T="int?"
                              Label="@field.Label"
                              Required="@field.IsRequired"
                              Min="@field.Min"
                              Max="@field.Max"
-                             Value="@FormState.NumericValues[field.Id]"
-                             ValueChanged="@((int? val) => FormState.UpdateNumericFieldValue(field, val))" />
+                             Value="@(GetNumericValue(fieldId))"
+                             ValueChanged="@((int? val) => NumericValueChanged(fieldId, val))" />
 
             <ValidationMessage For="@(() => field.Value)" />
         }
@@ -47,4 +50,52 @@
     /// Input fields to display
     /// </summary>
     [Parameter] public List<InputField> InputFields { get; set; } = new List<InputField>();
+
+    // For component initialization
+    protected override void OnInitialized()
+    {
+        // Log all field IDs to verify uniqueness
+        foreach (var field in InputFields)
+        {
+            Logger.LogInformation($"Field: {field.Label}, ID: {field.Id}, Type: {field.InputType}");
+        }
+    }
+
+    // Get numeric value by ID - safer than direct field reference
+    private int? GetNumericValue(string fieldId)
+    {
+        if (FormState.NumericValues.TryGetValue(fieldId, out var value))
+        {
+            return value;
+        }
+        return null;
+    }
+
+    // Update numeric value by ID - safer than field reference
+    private void NumericValueChanged(string fieldId, int? newValue)
+    {
+        Logger.LogDebug($"NumericValueChanged: Field ID {fieldId}, New Value: {newValue}");
+
+        // Find the field by ID
+        var field = InputFields.FirstOrDefault(f => f.Id == fieldId);
+        if (field != null)
+        {
+            // First update the dictionary directly
+            FormState.NumericValues[fieldId] = newValue;
+
+            // Then update the field value
+            field.Value = newValue?.ToString() ?? string.Empty;
+
+            // Notify the validation system
+            var fieldIdentifier = new FieldIdentifier(field, nameof(InputField.Value));
+            FormState.EditContext.NotifyFieldChanged(fieldIdentifier);
+
+            // Log the current state
+            Logger.LogDebug($"After update - Field: {field.Label}, Value: {field.Value}, NumericValues: {FormState.NumericValues[fieldId]}");
+        }
+        else
+        {
+            Logger.LogWarning($"Could not find field with ID {fieldId}");
+        }
+    }
 }

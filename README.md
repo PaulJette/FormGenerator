@@ -41,10 +41,9 @@ A Blazor WebAssembly application that dynamically generates forms based on JSON 
    ```
 
 5. Open your web browser and navigate to:
-   - https://localhost:5001 (HTTPS)
-   - http://localhost:5000 (HTTP)
+   - http://localhost:5073 (HTTP)
 
-The exact ports may vary if they're already in use. Check the console output after running `dotnet run` for the actual URLs.
+The exact ports may vary if they're already in use. Check the console output after running `dotnet run` for the actual URLs (example: Now listening on: https://localhost:XXXXX).
 
 ## How It Works
 
@@ -86,6 +85,7 @@ The application follows a structured architecture with clear separation of conce
 - **FormGenerationService**: Converts JSON definitions into FormModel objects
   - Parses field types and properties
   - Maps JSON properties to appropriate field models
+  - Generates guaranteed unique IDs for each field to prevent reference issues
 
 - **FormStateService**: Manages form state throughout the application lifecycle
   - Tracks current and original form state
@@ -189,6 +189,11 @@ This project took over 12 hours to complete. As my first Blazor application, it 
 
 5. **MudBlazor Integration**: While MudBlazor provides excellent UI components, integrating them with dynamic validation required custom solutions.
 
+6. **Numeric Field Binding**: A particular challenge was ensuring that numeric fields maintained independent values when multiple instances existed on the same form. This required:
+   - Implementing a robust ID generation system that guarantees uniqueness
+   - Carefully managing the binding between MudNumericField components and the underlying data model
+   - Using string-based references rather than object references to prevent unintended state sharing
+
 ## Future Improvements
 
 Several areas could be enhanced in future iterations:
@@ -208,6 +213,21 @@ Several areas could be enhanced in future iterations:
 7. **Form Templates**: Save and reuse common form configurations.
 
 8. **Performance Optimization**: Minimize re-renders and improve component lifecycle management.
+
+9. **Enhanced Debugging**: More comprehensive logging to track component lifecycles and data flow.
+
+## Known Issues and Solutions
+
+### Resolved Issues
+
+1. **Numeric Field Value Sharing**: Previously, changing one numeric field would update all numeric fields to the same value. This was resolved by:
+   - Implementing a more robust field ID generation system in `FormGenerationService.cs`
+   - Modifying the numeric field binding approach in `InputFieldsSection.razor` to use string IDs directly
+   - Adding safer value retrieval and update methods that prevent unintended state sharing
+
+2. **Compiler Warnings**: Fixed various nullability and validation-related compiler warnings in the form validation components.
+
+3. **MudBlazor Component Issues**: Resolved issues with MudExpansionPanel attribute binding that were causing analyzer warnings.
 
 ## Extending the Project
 
@@ -253,7 +273,7 @@ public class RadioButtonField
 case "radio":
     formModel.RadioButtonFields.Add(new RadioButtonField
     {
-        Id = field.Id ?? $"radio_{Guid.NewGuid()}",
+        Id = GenerateUniqueFieldId("radio"),  // Use the new unique ID generation method
         Label = field.Label ?? "Unnamed Radio Group",
         Options = field.Values ?? new List<string>(),
         IsRequired = field.Required

@@ -9,8 +9,10 @@
     @if (DetailedError != null)
     {
         <MudExpansionPanels>
-            <MudExpansionPanel Text="@(ShowDetails ? "Hide Details" : "Show Details")" @bind-IsExpanded="ShowDetails">
-                <MudText Typo="Typo.body2" Style="overflow-x: auto; white-space: pre-wrap;">@DetailedError</MudText>
+            <MudExpansionPanel Text="@(ShowDetails ? "Hide Details" : "Show Details")">
+                <ChildContent>
+                    <MudText Typo="Typo.body2" Style="overflow-x: auto; white-space: pre-wrap;">@DetailedError</MudText>
+                </ChildContent>
             </MudExpansionPanel>
         </MudExpansionPanels>
     }
@@ -26,7 +28,7 @@
 @code {
     [Parameter] public string Title { get; set; } = "Error";
     [Parameter] public string Message { get; set; } = "An error occurred while processing your request.";
-    [Parameter] public string DetailedError { get; set; }
+    [Parameter] public string DetailedError { get; set; } = string.Empty;
     [Parameter] public string AlertType { get; set; } = "error";
     [Parameter] public EventCallback OnRetry { get; set; }
 

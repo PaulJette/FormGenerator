@@ -12,8 +12,8 @@ public class FormModel
 
 public class InputField
 {
-    public string Id { get; set; }
-    public string Label { get; set; }
+    public string Id { get; set; } = string.Empty;
+    public string Label { get; set; } = string.Empty;
     public bool IsRequired { get; set; }
     public string InputType { get; set; } = "text"; // text, email, number, etc.
     public int? Min { get; set; }
@@ -25,8 +25,8 @@ public class InputField
 
 public class DropdownField
 {
-    public string Id { get; set; }
-    public string Label { get; set; }
+    public string Id { get; set; } = string.Empty;
+    public string Label { get; set; } = string.Empty;
     public bool IsRequired { get; set; }
 
     [CustomDropdownValidation]
@@ -37,8 +37,8 @@ public class DropdownField
 
 public class CheckboxField
 {
-    public string Id { get; set; }
-    public string Label { get; set; }
+    public string Id { get; set; } = string.Empty;
+    public string Label { get; set; } = string.Empty;
     public bool IsRequired { get; set; }
 
     [CustomCheckboxValidation]
@@ -48,7 +48,7 @@ public class CheckboxField
 // Custom validation attributes
 public class CustomInputValidationAttribute : ValidationAttribute
 {
-    protected override ValidationResult IsValid(object value, ValidationContext validationContext)
+    protected override ValidationResult? IsValid(object? value, ValidationContext validationContext)
     {
         var field = (InputField)validationContext.ObjectInstance;
 
@@ -86,13 +86,13 @@ public class CustomInputValidationAttribute : ValidationAttribute
             }
         }
 
-        return ValidationResult.Success;
+        return ValidationResult.Success!;
     }
 }
 
 public class CustomDropdownValidationAttribute : ValidationAttribute
 {
-    protected override ValidationResult IsValid(object value, ValidationContext validationContext)
+    protected override ValidationResult? IsValid(object? value, ValidationContext validationContext)
     {
         var field = (DropdownField)validationContext.ObjectInstance;
 
@@ -101,13 +101,13 @@ public class CustomDropdownValidationAttribute : ValidationAttribute
             return new ValidationResult($"Please select a {field.Label.ToLower()}.");
         }
 
-        return ValidationResult.Success;
+        return ValidationResult.Success!;
     }
 }
 
 public class CustomCheckboxValidationAttribute : ValidationAttribute
 {
-    protected override ValidationResult IsValid(object value, ValidationContext validationContext)
+    protected override ValidationResult? IsValid(object? value, ValidationContext validationContext)
     {
         var field = (CheckboxField)validationContext.ObjectInstance;
 
@@ -116,6 +116,6 @@ public class CustomCheckboxValidationAttribute : ValidationAttribute
             return new ValidationResult($"{field.Label} must be checked.");
         }
 
-        return ValidationResult.Success;
+        return ValidationResult.Success!;
     }
 }
