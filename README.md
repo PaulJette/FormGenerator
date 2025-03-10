@@ -139,7 +139,7 @@ The application uses JSON files to define form structure. By default, it loads `
 private const string JsonFilePath = "formConfig.json";
 ```
 
-Change this constant to use a different configuration file.
+Change this constant to use a different configuration file. NOTE: 'expandedFormConfig.json' is included in wwwroot. This file contains additional elements to test the generation of a larger form.
 
 ### JSON Structure
 
@@ -175,7 +175,7 @@ Change this constant to use a different configuration file.
 
 ## Development Journey and Challenges
 
-This project took over 12 hours to complete. As my first Blazor application, it served as both a learning opportunity and a practical implementation of a dynamic form system.
+This project took ~16 hours to complete. As my first Blazor application, it served as both a learning opportunity and a practical implementation of a dynamic form system.
 
 ### Key Challenges
 
